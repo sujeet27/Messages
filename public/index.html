@@ -1,0 +1,264 @@
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" charset="UTF-8">
+    <title>Messages Project</title>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
+    <!-- jQuery library -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+    <!-- Latest compiled JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+</head>
+<body>
+    <div class="container">
+        <div class="btn-group" style="margin-left: 340px" >
+            <p style="margin-top: 100px;margin-left: 70px;">
+        <button type="button" id="postMessage" class="btn btn-primary">Post Message</button>
+        <button type="button" id="getMessage" class="btn btn-primary">Get Messages</button>
+        <button type="button" id="deleteMessage" class="btn btn-primary">Delete</button>
+        <!--<button type="button" id="getMessageById" class="btn btn-primary">Get Message by Id</button>-->
+            </p>
+        </div>
+    </div>
+
+
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title" id="myModalLabel">Post Message</h4>
+                </div>
+                <div class="modal-body">
+                    Title: <input type="text" id="title" name="title" width="100px"><br><br>
+                    Content: <textarea id="contentTextArea" rows="4" cols="70">
+                    </textarea><br>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" id="submitPostMessage" class="btn btn-primary">Save changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Get Messages Modal -->
+    <div class="modal fade" id="getMessagesModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title" id="getMessagesLabel">View Messages</h4>
+                </div>
+                <div class="modal-body" >
+                    <div class="row" style="margin-left:7px">
+                        <div class="form-group" id="viewByIdForm">
+                    ID: <input type="text" id="id" name="id" width="100px" height="30px"><br><br>
+                    <button type="button" class="btn btn-primary" id="viewByIDButton" style="display: none;float: right;margin-top: -45px;margin-right: 300px">View</button>
+                        </div>
+                    <fieldset>
+                        <div id="messagesTable" class="table table-striped">
+
+                        </div>
+                    </fieldset>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="deleteButton" style="display: none">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-info alert-dismissible" style="display: none;width: 400px; margin-left: 300px" id="successId">
+        <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+    </div>
+
+
+
+<script type="text/javascript">
+    $(function () {
+        $('#postMessage').click('submit', function (e) {
+            e.preventDefault();
+            $('#myModal').modal('show');
+        })
+
+        $('#submitPostMessage').click('submit', function (e) {
+            e.preventDefault();
+            $.ajax({
+                url:'/messages',
+                method:'POST',
+                data:{title:$("#title").val(),content:$("#contentTextArea").val()},
+                success:function (data) {
+                    console.log("inside success")
+                    $('#successId').css("display","block");
+                    $('#successId').append('Message Successfully Posted');
+                    $('#myModal').modal('hide'); //or  $('#IDModal').modal('hide');
+                    return false;
+                },
+                error:function (error) {
+                    $('#successId').css("display","block");
+                    $('#successId').append("Not able to submit the message. Please try again after some time.");
+                    $('#myModal').modal('hide'); //or  $('#IDModal').modal('hide');
+                    console.log("ïnside error")
+                }
+            })
+        })
+
+        $('#getMessage').click('submit', function (e) {
+            e.preventDefault();
+            $.ajax({
+                url:'/messages',
+                method:'GET',
+                success:function (data) {
+                    console.log("inside success of get ", data);
+                    showMessages(data);
+                    $('#getMessagesModal').modal('show');
+                },
+                error:function (error) {
+                    console.log("ïnside error")
+                }
+            })
+        })
+
+        $('#viewByIDButton').click('submit', function (e) {
+            e.preventDefault();
+            $.ajax({
+                url:'/messages',
+                method:'GET',
+                data:{id:$("#id").val()},
+                success:function (data) {
+                    console.log("inside success of get ", data);
+                    showMessages(data, true);
+                    $('#getMessagesModal').modal('show');
+                },
+                error:function (error) {
+                    console.log("ïnside error")
+                }
+            })
+        })
+
+        $('#deleteMessage').click('submit', function (e) {
+            e.preventDefault();
+
+            $.ajax({
+                url:'/messages',
+                method:'GET',
+                success:function (data) {
+                    console.log("inside success of get ", data);
+                    showMessagesForDelete(data);
+                    $('#getMessagesModal').modal('show');
+                },
+                error:function (error) {
+                    console.log("ïnside error")
+                }
+            })
+        })
+
+        $('#deleteButton').click('submit', function (e) {
+            e.preventDefault();
+            var checkedIds = [];
+            $('#messagesTable input:checked').each( function () {
+                checkedIds.push(this.id);
+            });
+            $.ajax({
+                url:'/messages',
+                method:'DELETE',
+                data: {checkedIds: checkedIds},
+                success:function (data) {
+                    console.log("inside success of get ", data);
+                    $('#successId').css("display","block");
+                    $('#successId').append('Message Successfully Deleted');
+                    $('#getMessagesModal').modal('hide'); //or  $('#IDModal').modal('hide');
+                    return false;
+                },
+                error:function (error) {
+                    console.log("ïnside error");
+                    $('#successId').css("display","block");
+                    $('#successId').append("Not able to delete the message. Please try again after some time.");
+                    $('#getMessagesModal').modal('hide'); //or  $('#IDModal').modal('hide');
+                }
+            })
+        })
+    })
+
+    function showMessages(messagesArray, flagByID) {
+        var header = '<table class="table table-striped">'+
+                '<thead><tr>' +
+            '<th>Title</th>' +
+            '<th>Content</th>' +
+            '<th>Created On</th>' +
+            '<th>Message Id </th>' +
+            '</tr>' +
+            '<th style="width: 150px;"></th>'+
+            '</thead>'+
+            '<tbody>';
+
+        var footer = '</tbody>'+
+                '</table>';
+
+        var rowValue = '';
+        for(var i=0;i<messagesArray.length;i++){
+            var text =
+                '<tr>'+
+                 '<td>'+messagesArray[i].title+'</td>'+
+                 '<td style="max-width: 50px;word-wrap: break-word">'+messagesArray[i].content+'</td>'+
+                    '<td>'+messagesArray[i].createdOn+'</td>'+
+                    '<td>'+messagesArray[i].messageId+'</td>'+
+                    '</tr>'
+            rowValue = rowValue.concat(text);
+        }
+        var finalResult = header.concat(rowValue,footer);
+        $('#viewByIdForm').css('display', 'block');
+        $('#viewByIDButton').css('display', 'block');
+        $('#deleteButton').css('display', 'none');
+        if(flagByID && messagesArray[0].palindrome){
+            alert("Title of this message is a palindrome.!!")
+        }
+        $('#messagesTable').html(finalResult);
+    }
+
+    function showMessagesForDelete(messagesArray) {
+        var header = '<table class="table table-striped">'+
+                '<thead><tr>' +
+            '<th>Title</th>' +
+            '<th>Content</th>' +
+            '<th>Created On</th>' +
+            '<th>Delete</th>' +
+            '</tr>' +
+            '<th style="width: 150px;"></th>'+
+            '</thead>'+
+            '<tbody>';
+
+        var footer = '</tbody>'+
+                '</table>';
+
+        var rowValue = '';
+        for(var i=0;i<messagesArray.length;i++){
+            var text =
+                '<tr>'+
+                 '<td>'+messagesArray[i].title+'</td>'+
+                '<td style="max-width: 50px;word-wrap: break-word">'+messagesArray[i].content+'</td>'+
+                 '<td>'+messagesArray[i].createdOn+'</td>'+
+                 '<td><input type="checkbox" id='+messagesArray[i].messageId+' value='+messagesArray[i].messageId+'></td>'+
+                    '</tr>'
+
+            rowValue = rowValue.concat(text);
+        }
+        var finalResult = header.concat(rowValue,footer);
+        $('#deleteButton').css('display', 'block');
+        $('#viewByIdForm').css('display', 'none');
+        $('#messagesTable').html(finalResult);
+    }
+
+</script>
+
+</body>
+</html>
